@@ -67,17 +67,17 @@ class Tensor (Value):
 
     def __init__(self, array, *, dtype=None, requires_grad=True, **kwargs):
         
-        super().__init__(**kwargs)
         self.requires_grad = requires_grad
         self.data = array
         self.dtype = dtype
         self.grad = None
-
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
     @staticmethod
     def from_numpy(numpy_array, dtype):
-        return Tensor(numpy_array, dtype=dtype, requires_grad=False)
+        return Tensor(numpy_array, dtype=dtype, requires_grad=True)
     @staticmethod
     def make_from_op(op: Op, inputs: List["Value"]):
         tensor = Tensor.__new__(Tensor)
@@ -144,7 +144,11 @@ class AddScalar(TensorOp):
     def gradient(self, out_grad: Tensor, node: Tensor):
         return (out_grad,) #重载gradient函数的输出必须是Tuple
     
-
+class MatMul(TensorOp):
+    def compute(self, a: NDArray, b: NDArray):
+        return a @ b
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad @ node.inputs[1].T, node.inputs[0].T @ out_grad
 
 
 # ——————————————————————————————————————————————————辅助函数—————————————————————————————————————————————————————————————————————————————————
