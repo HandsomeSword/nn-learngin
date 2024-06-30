@@ -37,7 +37,7 @@ class Linear(Module):
         self.out_features = out_features
         self.weight = init_He (in_features, out_features, dtype) #请自行实现初始化算法if bias:
         if bias:
-            self.bias = Tensor(numpy.zeros(self.out_features))
+            self.bias = Parameter(numpy.zeros(self.out_features))
         else:
             self.bias = None
     def forward(self, X: Tensor) -> Tensor:
@@ -105,9 +105,8 @@ class Residual(Module):
 
 # ------------------------------Parameter--------------------------------
 class Parameter(Tensor):
-    def __init__(self, data, requires_grad=True):
-        super().__init__(data, requires_grad=requires_grad)
-        self.requires_grad = requires_grad
+    def __init__(self, data, requires_grad=True, dtype=None):
+        super().__init__(data, dtype=dtype,requires_grad=requires_grad, inputs = [], op = None)
 
 
 
@@ -149,4 +148,4 @@ def _child_modules(value: object) -> List["Module"]:
 
 
 def init_He(in_features, out_features, dtype):
-    return Tensor(numpy.random.randn(in_features, out_features) * numpy.sqrt(2 / in_features), dtype=dtype)
+    return Parameter(numpy.random.randn(in_features, out_features) * numpy.sqrt(2 / in_features), dtype=dtype)

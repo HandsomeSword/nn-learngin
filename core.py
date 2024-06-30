@@ -32,7 +32,10 @@ class Value:
         if self.is_leaf():
             return self.cached_data
         # 否则，使用op对inputs进行计算
-        input_data = [input_value.realize_cached_data() for input_value in self.inputs]
+        input_data = []
+        for input_value in self.inputs:
+            input_data.append(input_value.realize_cached_data())
+        # input_data = [input_value.realize_cached_data() for input_value in self.inputs]
 
         self.cached_data = self.op.compute(*input_data)
         return self.cached_data
@@ -83,6 +86,8 @@ class Tensor (Value):
     @staticmethod
     def make_from_op(op: Op, inputs: List["Value"]):
         tensor = Tensor.__new__(Tensor)
+        if isinstance(inputs, Tensor):
+            inputs = [inputs]
         tensor._init(op, inputs)
         tensor.requires_grad = True
         tensor.realize_cached_data()
@@ -174,7 +179,7 @@ class Tensor (Value):
             return DivScalar(other)(self)
     # 求和
     def sum(self):
-        return Sum([self])
+        return Sum()(self)
     # 求对数
     def log(self):
         return Log()(self)
@@ -217,7 +222,7 @@ class SubScalar(TensorOp):
     def __init__(self, scalar):
         self.scalar = scalar
     def compute(self, a: NDArray):
-        return a - self.scalar
+        return (a - self.scalar, )
     def gradient(self, out_grad: Tensor, node: Tensor):
         return out_grad
 # 对应元素相乘
@@ -232,9 +237,9 @@ class MulScalar(TensorOp):
     def __init__(self, scalar):
         self.scalar = scalar
     def compute(self, a: NDArray):
-        return a * self.scalar
+        return (a * self.scalar, )
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad * node.inputs[1]
+        return (out_grad * node.inputs[1], )
 # 矩阵乘法
 class MatMul(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
@@ -254,7 +259,7 @@ class PowScalar(TensorOp):
     def compute(self, a: NDArray):
         return a ** self.n
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad * self.n * (node ** (self.n - 1))
+        return (out_grad * self.n * (node ** (self.n - 1)), )
 
 # 广播
 class BroadcastTo(TensorOp):
@@ -263,7 +268,7 @@ class BroadcastTo(TensorOp):
     def compute(self, a: NDArray):
         return np.broadcast_to(a, self.shape)
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return Tensor(np.sum(out_grad.data, axis=tuple(range(len(out_grad.shape) - len(node.shape)))), requires_grad=False)
+        return (Tensor(np.sum(out_grad.data, axis=tuple(range(len(out_grad.shape) - len(node.shape)))), requires_grad=False),)
 
 class Reshape(TensorOp):
     def __init__(self, shape):
@@ -271,19 +276,19 @@ class Reshape(TensorOp):
     def compute(self, a: NDArray):
         return a.reshape(self.shape)
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return Tensor(np.reshape(out_grad.data, node.shape))
+        return (Tensor(np.reshape(out_grad.data, node.shape)), )
     
 class Relu(TensorOp):
     def compute(self, a: NDArray):
         return np.maximum(a, 0)
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return Tensor((node.data > 0).astype(np.float32)) * out_grad
+        return (Tensor((node.data > 0).astype(np.float32)) * out_grad, )
 
 class Exp(TensorOp):
     def compute(self, a: NDArray):
         return np.exp(a)
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad * node
+        return (out_grad * node, )
 
 class EWiseDiv(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
@@ -297,19 +302,19 @@ class DivScalar(TensorOp):
     def compute(self, a: NDArray):
         return a / self.scalar
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad / node.inputs[1]
+        return (out_grad / node.inputs[1], )
 
 class Sum(TensorOp):
     def compute(self, a: NDArray):
         return np.sum(a)
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad.broadcast_to(node.shape)
+        return (out_grad.broadcast_to(node.shape), )
 
 class Log(TensorOp):
     def compute(self, a: NDArray):
         return np.log(a)
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad / node
+        return (out_grad / node, )
 
 # ——————————————————————————————————————————————————辅助函数—————————————————————————————————————————————————————————————————————————————————
 
