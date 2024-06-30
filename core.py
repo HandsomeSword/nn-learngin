@@ -127,16 +127,61 @@ class Tensor (Value):
     def detach (self):
         return Tensor.make_const(self.realize_cached_data())
     
+    # +++++++++++++++++++++++实现Tensor的各种操作+++++++++++++++++++++++++
     # 重载加法
     def __add__(self, other):
         if isinstance(other, Tensor):
             return EWiseAdd()(self, other)
         else:
             return AddScalar(other)(self)
+    # 重载减法
+    def __sub__(self, other):
+        if isinstance(other, Tensor):
+            return EWiseSub()(self, other)
+        else:
+            return SubScalar(other)(self)
     
     # 重载乘法
     def __mul__(self, other):
+        if isinstance(other, Tensor):
+            return EWiseMul()(self, other)
+        else:
+            return MulScalar(other)(self)
+    
+    # 重载矩阵乘法
+    def __matmul__(self, other):
         return MatMul()(self, other)
+    # 广播
+    def broadcast_to(self, shape):
+        return BroadcastTo(shape)(self)
+    
+    # 重载reshape
+    def reshape(self, *shape):
+        return Reshape(shape)(self)
+    #实现Tensor的relu操作
+    def relu(self):
+        return Relu()(self)
+    
+    #实现Tensor的求指数操作
+    def exp(self):
+        return Exp()(self)
+    
+    # 除法操作
+    def __truediv__(self, other):
+        if isinstance(other, Tensor):
+            return EWiseDiv()(self, other)
+        else:
+            return DivScalar(other)(self)
+    # 求和
+    def sum(self):
+        return Sum([self])
+    # 求对数
+    def log(self):
+        return Log()(self)
+    
+    # 常数幂
+    def pow(self, n):
+        return PowScalar(n)(self)
     
 
 
@@ -161,7 +206,36 @@ class AddScalar(TensorOp):
         return a + self.scalar
     def gradient(self, out_grad: Tensor, node: Tensor):
         return (out_grad,) #重载gradient函数的输出必须是Tuple
-    
+# 对应元素相减
+class EWiseSub(TensorOp):
+    def compute(self, a: NDArray, b: NDArray):
+        return a - b
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad, -out_grad
+# 减常数
+class SubScalar(TensorOp): 
+    def __init__(self, scalar):
+        self.scalar = scalar
+    def compute(self, a: NDArray):
+        return a - self.scalar
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad
+# 对应元素相乘
+class EWiseMul(TensorOp):
+    def compute(self, a: NDArray, b: NDArray):
+        return a * b
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        # 有问题，暂时不处理
+        return out_grad * node.inputs[1], out_grad * node.inputs[0]
+# 乘常数
+class MulScalar(TensorOp):
+    def __init__(self, scalar):
+        self.scalar = scalar
+    def compute(self, a: NDArray):
+        return a * self.scalar
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad * node.inputs[1]
+# 矩阵乘法
 class MatMul(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
         return a @ b
@@ -174,6 +248,68 @@ class MatMul(TensorOp):
         node1_grad = out_grad_data * node0_data
         return Tensor(np.array(node0_grad)), Tensor(np.array(node1_grad))
 
+class PowScalar(TensorOp):
+    def __init__(self, n):
+        self.n = n
+    def compute(self, a: NDArray):
+        return a ** self.n
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad * self.n * (node ** (self.n - 1))
+
+# 广播
+class BroadcastTo(TensorOp):
+    def __init__(self, shape):
+        self.shape = shape
+    def compute(self, a: NDArray):
+        return np.broadcast_to(a, self.shape)
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return Tensor(np.sum(out_grad.data, axis=tuple(range(len(out_grad.shape) - len(node.shape)))), requires_grad=False)
+
+class Reshape(TensorOp):
+    def __init__(self, shape):
+        self.shape = shape
+    def compute(self, a: NDArray):
+        return a.reshape(self.shape)
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return Tensor(np.reshape(out_grad.data, node.shape))
+    
+class Relu(TensorOp):
+    def compute(self, a: NDArray):
+        return np.maximum(a, 0)
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return Tensor((node.data > 0).astype(np.float32)) * out_grad
+
+class Exp(TensorOp):
+    def compute(self, a: NDArray):
+        return np.exp(a)
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad * node
+
+class EWiseDiv(TensorOp):
+    def compute(self, a: NDArray, b: NDArray):
+        return a / b
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad / node.inputs[1], -out_grad * node.inputs[0] / (node.inputs[1] ** 2)
+    
+class DivScalar(TensorOp):
+    def __init__(self, scalar):
+        self.scalar = scalar
+    def compute(self, a: NDArray):
+        return a / self.scalar
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad / node.inputs[1]
+
+class Sum(TensorOp):
+    def compute(self, a: NDArray):
+        return np.sum(a)
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad.broadcast_to(node.shape)
+
+class Log(TensorOp):
+    def compute(self, a: NDArray):
+        return np.log(a)
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return out_grad / node
 
 # ——————————————————————————————————————————————————辅助函数—————————————————————————————————————————————————————————————————————————————————
 
