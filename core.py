@@ -69,7 +69,7 @@ class Tensor (Value):
         
         self.requires_grad = requires_grad
         self.data = array
-        self.dtype = dtype
+        self._dtype = dtype
         self.grad = None
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -77,7 +77,7 @@ class Tensor (Value):
 
     @staticmethod
     def from_numpy(numpy_array, dtype):
-        return Tensor(numpy_array, dtype=dtype, requires_grad=True)
+        return Tensor(numpy_array, dtype=dtype, requires_grad=True, inputs=[], op=None)
     @staticmethod
     def make_from_op(op: Op, inputs: List["Value"]):
         tensor = Tensor.__new__(Tensor)
@@ -105,7 +105,11 @@ class Tensor (Value):
         return self.cached_data.shape
     @ property
     def dtype (self):
-        return self.dtype
+        return self._dtype
+    @ dtype.setter
+    def dtype (self, value):
+        self._dtype = value
+
 
 
     def backward (self, out_grad=None):
