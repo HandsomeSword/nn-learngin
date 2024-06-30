@@ -33,7 +33,8 @@ class Value:
             return self.cached_data
         # 否则，使用op对inputs进行计算
         input_data = [input_value.realize_cached_data() for input_value in self.inputs]
-        self.cached_data = self.op.compute(input_data)
+
+        self.cached_data = self.op.compute(*input_data)
         return self.cached_data
 
 
@@ -77,11 +78,13 @@ class Tensor (Value):
 
     @staticmethod
     def from_numpy(numpy_array, dtype):
+        # 这个方法用于创建一个leaf节点，也就是输入节点
         return Tensor(numpy_array, dtype=dtype, requires_grad=True, inputs=[], op=None)
     @staticmethod
     def make_from_op(op: Op, inputs: List["Value"]):
         tensor = Tensor.__new__(Tensor)
         tensor._init(op, inputs)
+
         tensor.realize_cached_data()
         return tensor
     @staticmethod
@@ -123,6 +126,17 @@ class Tensor (Value):
 
     def detach (self):
         return Tensor.make_const(self.realize_cached_data())
+    
+    # 重载加法
+    def __add__(self, other):
+        if isinstance(other, Tensor):
+            return EWiseAdd()(self, other)
+        else:
+            return AddScalar(other)(self)
+    
+    # 重载乘法
+    def __matmul__(self, other):
+        return MatMul()(self, other)
     
 
 
