@@ -84,16 +84,16 @@ class Tensor (Value):
     def make_from_op(op: Op, inputs: List["Value"]):
         tensor = Tensor.__new__(Tensor)
         tensor._init(op, inputs)
-
+        tensor.requires_grad = True
         tensor.realize_cached_data()
         return tensor
     @staticmethod
     def make_const(data, requires_grad=False):
         tensor = Tensor.__new__(Tensor)
         if isinstance(data, Tensor):
-            tensor_data = data
-        else:
             tensor_data = data.realize_cached_data()
+        else:
+            tensor_data = data
         tensor._init(None, [], # 将前置节点置空
         cached_data = tensor_data, requires_grad = requires_grad)
         return tensor
@@ -135,7 +135,7 @@ class Tensor (Value):
             return AddScalar(other)(self)
     
     # 重载乘法
-    def __matmul__(self, other):
+    def __mul__(self, other):
         return MatMul()(self, other)
     
 
@@ -166,7 +166,13 @@ class MatMul(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
         return a @ b
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad @ node.inputs[1].T, node.inputs[0].T @ out_grad
+        out_grad_data = out_grad.data
+        node0_data = node.inputs[0].data
+        node1_data = node.inputs[1].data
+
+        node0_grad = out_grad_data * node1_data
+        node1_grad = out_grad_data * node0_data
+        return Tensor(np.array(node0_grad)), Tensor(np.array(node1_grad))
 
 
 # ——————————————————————————————————————————————————辅助函数—————————————————————————————————————————————————————————————————————————————————
@@ -222,6 +228,10 @@ def find_topo_sort(output_tensors):
     return topo_order
 
 
-
+def sum(grad : List['Tensor']):
+    sum = Tensor(np.zeros(grad[0].shape))
+    for i in grad:
+        sum = sum + i
+    return sum
     
 
