@@ -98,12 +98,22 @@ class MSELoss(Module):
     def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
         return (y_pred - y_true).pow(2).sum()
 
+class CrossEntrophyLoss(Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, y_pred: Tensor, y_true: Tensor) -> Tensor:
+        y_true.data = - y_true.data
+        return (y_true * y_pred.log()).sum()
+
 class Residual(Module):
-    def __init__(self, sublayer: Module):
+    def __init__(self, *sublayer):
         super().__init__()
         self.sublayer = sublayer
     def forward(self, x: Tensor) -> Tensor:
-        return x + self.sublayer(x)
+        x_out = x
+        for layer in self.sublayer:
+            x_out = layer(x_out)
+        return x + x_out
 
 # ------------------------------Parameter--------------------------------
 class Parameter(Tensor):

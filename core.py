@@ -290,7 +290,9 @@ class EWiseDiv(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
         return a / b
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad / node.inputs[1], -out_grad * node.inputs[0] / (node.inputs[1] ** 2)
+        out_grad1 = out_grad * node.inputs[0] / (node.inputs[1].pow(2))
+        out_grad1.data = -out_grad1.data
+        return out_grad / node.inputs[1], out_grad1
     
 class DivScalar(TensorOp):
     def __init__(self, scalar):
@@ -304,7 +306,7 @@ class Sum(TensorOp):
     def compute(self, a: NDArray):
         return np.sum(a)
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return (out_grad.broadcast_to(node.shape), )
+        return (out_grad.broadcast_to(node.inputs[0].shape), )
 
 class Log(TensorOp):
     def compute(self, a: NDArray):
