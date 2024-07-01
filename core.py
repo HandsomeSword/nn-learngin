@@ -86,8 +86,6 @@ class Tensor (Value):
     @staticmethod
     def make_from_op(op: Op, inputs: List["Value"]):
         tensor = Tensor.__new__(Tensor)
-        if isinstance(inputs, Tensor):
-            inputs = [inputs]
         tensor._init(op, inputs)
         tensor.requires_grad = True
         tensor.realize_cached_data()
@@ -222,9 +220,9 @@ class SubScalar(TensorOp):
     def __init__(self, scalar):
         self.scalar = scalar
     def compute(self, a: NDArray):
-        return (a - self.scalar, )
+        return a - self.scalar
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad
+        return (out_grad, )
 # 对应元素相乘
 class EWiseMul(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
