@@ -247,7 +247,7 @@ class MatMul(TensorOp):
         return a @ b
     def gradient(self, out_grad: Tensor, node: Tensor):
 
-        return (out_grad @ node.inputs[1].T, node.inputs[0].T @ out_grad)
+        return (out_grad @ node.inputs[1].T(), node.inputs[0].T() @ out_grad)
 
 class PowScalar(TensorOp):
     def __init__(self, n):
