@@ -257,7 +257,7 @@ class PowScalar(TensorOp):
     def compute(self, a: NDArray):
         return a ** self.n
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return (out_grad * self.n * (node ** (self.n - 1)), )
+        return (out_grad * self.n * (node.pow(self.n - 1)), )
 
 # 广播
 class BroadcastTo(TensorOp):
