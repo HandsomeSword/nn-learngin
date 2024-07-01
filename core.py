@@ -186,6 +186,9 @@ class Tensor (Value):
     def pow(self, n):
         return PowScalar(n)(self)
     
+    def T(self):
+        return Transpose()(self)
+    
 
 
 # ——————————————————————————————————————————————————TensorOp—————————————————————————————————————————————————————————————————————————————————
@@ -243,13 +246,8 @@ class MatMul(TensorOp):
     def compute(self, a: NDArray, b: NDArray):
         return a @ b
     def gradient(self, out_grad: Tensor, node: Tensor):
-        out_grad_data = out_grad.data
-        node0_data = node.inputs[0].data
-        node1_data = node.inputs[1].data
 
-        node0_grad = out_grad_data * node1_data
-        node1_grad = out_grad_data * node0_data
-        return Tensor(np.array(node0_grad)), Tensor(np.array(node1_grad))
+        return (out_grad @ node.inputs[1].T, node.inputs[0].T @ out_grad)
 
 class PowScalar(TensorOp):
     def __init__(self, n):
@@ -314,6 +312,11 @@ class Log(TensorOp):
     def gradient(self, out_grad: Tensor, node: Tensor):
         return (out_grad / node, )
 
+class Transpose(TensorOp):
+    def compute(self, a: NDArray):
+        return a.T
+    def gradient(self, out_grad: Tensor, node: Tensor):
+        return (out_grad.T, )
 # ——————————————————————————————————————————————————辅助函数—————————————————————————————————————————————————————————————————————————————————
 
 def compute_gradient_of_variables(output_tensor, out_grad):
