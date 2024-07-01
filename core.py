@@ -264,7 +264,7 @@ class BroadcastTo(TensorOp):
     def compute(self, a: NDArray):
         return np.broadcast_to(a, self.shape)
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return (Tensor(np.sum(out_grad.data, axis=tuple(range(len(out_grad.shape) - len(node.shape)))), requires_grad=False),)
+        return (Tensor(np.sum(out_grad.data, axis=tuple(range(len(out_grad.shape) - len(node.inputs[0].shape)))), requires_grad=False),)
 
 class Reshape(TensorOp):
     def __init__(self, shape):

@@ -38,11 +38,13 @@ class Linear(Module):
         self.weight = init_He (in_features, out_features, dtype) #请自行实现初始化算法if bias:
         if bias:
             self.bias = Parameter(numpy.zeros(self.out_features))
+            print("")
         else:
             self.bias = None
     def forward(self, X: Tensor) -> Tensor:
         X_out = X @ self.weight
         if self.bias:
+            tmp = self.bias.broadcast_to(X_out.shape)
             return X_out + self.bias.broadcast_to(X_out.shape)
         return X_out
 

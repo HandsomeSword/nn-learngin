@@ -13,12 +13,15 @@ class Optimizer(ABC):
             p.grad = None
 
 class SGD(Optimizer):
-    def __init__(self, params, lr=0.001):
+    def __init__(self, params, lr=0.001, batch_size = 1):
         super().__init__(params)
         self.lr = lr
+        self.batch_size = batch_size
     def step(self):
         for i, param in enumerate(self.params):
-            grad = Tensor(param.grad, dtype='float32').data
+            # 关于batch_size的问题，有两个问题：grad的累加问题，以及平均问题
+            # grad的累加应该在backward时就解决，平均问题在这里解决（张量乘法的梯度就自动求和了，但是有部分并没有，需要仔细查看）
+            grad = param.grad.data / self.batch_size
             param.data= param.data - grad * self.lr
 
 # ------------------------------Scheduler--------------------------------
